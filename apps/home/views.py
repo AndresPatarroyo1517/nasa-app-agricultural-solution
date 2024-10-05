@@ -2,12 +2,16 @@
 """
 Copyright (c) 2019 - present AppSeed.us
 """
-
+import os
 from django import template
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import render
+from django.conf import settings
+import pandas as pd
+import plotly.express as px
 from django.shortcuts import render
 
 def pages(request):
@@ -40,3 +44,23 @@ def pages(request):
 
 def index(request):
     return render(request, 'home/index.html') 
+
+
+
+def csv_plot_view(request):
+    # Construir la ruta al archivo CSV dentro de static
+    csv_file_path = os.path.join(settings.BASE_DIR, 'static', 'temperatura.csv')
+
+    
+    # Leer el archivo CSV   
+    data = pd.read_csv(csv_file_path, delimiter=";")
+
+
+    # Crear el gráfico (ejemplo: gráfico de dispersión)
+    fig = px.line(data, x='Año', y='Periodo', title='Gráfico de Temperatura')
+
+    # Convertir el gráfico a HTML
+    graph_html = fig.to_html(full_html=False)
+
+    # Renderizar el gráfico en la plantilla
+    return render(request, 'home/index.html', {'graph': graph_html})
