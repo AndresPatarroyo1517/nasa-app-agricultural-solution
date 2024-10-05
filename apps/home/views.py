@@ -4,41 +4,39 @@ Copyright (c) 2019 - present AppSeed.us
 """
 
 from django import template
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse
+from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import render
 
-
-@login_required(login_url="/login/")
-def index(request):
-    context = {'segment': 'index'}
-
-    html_template = loader.get_template('home/index.html')
-    return HttpResponse(html_template.render(context, request))
-
-
-@login_required(login_url="/login/")
 def pages(request):
     context = {}
-    # All resource paths end in .html.
-    # Pick out the html file name from the url. And load that template.
+    # Verifica que la URL termina en .html
+    load_template = request.path.split('/')[-1]
+
+    if not load_template.endswith('.html'):
+        return HttpResponse("Invalid request", status=400)
+
+    if load_template == 'admin':
+        return HttpResponseRedirect(reverse('admin:index'))
+
+    context['segment'] = load_template
+
     try:
-
-        load_template = request.path.split('/')[-1]
-
-        if load_template == 'admin':
-            return HttpResponseRedirect(reverse('admin:index'))
-        context['segment'] = load_template
-
+        # Intenta cargar la plantilla
         html_template = loader.get_template('home/' + load_template)
         return HttpResponse(html_template.render(context, request))
 
     except template.TemplateDoesNotExist:
-
+        # Manejo del error si la plantilla no existe
         html_template = loader.get_template('home/page-404.html')
         return HttpResponse(html_template.render(context, request))
 
-    except:
+    except Exception as e:
+        # Manejo de otros errores
         html_template = loader.get_template('home/page-500.html')
         return HttpResponse(html_template.render(context, request))
+
+def index(request):
+    return render(request, 'home/index.html') 
