@@ -13,6 +13,12 @@ from django.conf import settings
 import pandas as pd
 import plotly.express as px
 from django.shortcuts import render
+import h5netcdf
+import matplotlib.pyplot as plt
+import io
+import base64
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 def pages(request):
     context = {}
@@ -45,40 +51,53 @@ def pages(request):
 def index(request):
     return render(request, 'home/index.html') 
 
+def map_view(request):
+    # Ruta del archivo NC4
+    file_path = os.path.join(settings.BASE_DIR, 'static', 'MERRA2_400.tavg1_2d_flx_Nx.20240901.nc4')
 
+    try:
+        # Abrir el archivo NC4 usando h5netcdf
+        with h5netcdf.File(file_path, 'r') as dataset:
+            latitudes = dataset['lat'][:]
+            longitudes = dataset['lon'][:]
+            temperatures = dataset['TSH'][:]
 
-def csv_plot_view(request):
-    # Construir la ruta al archivo CSV dentro de static
-    csv_file_path = os.path.join(settings.BASE_DIR, 'static', 'temperatura.csv')
+        # Seleccionar el primer nivel de temperatura si es necesario
+        temperatures_2d = temperatures[0, :, :]  # Ajusta según sea necesario
 
-    
-    # Leer el archivo CSV   
-    data = pd.read_csv(csv_file_path, delimiter=";")
+        # Crear el gráfico
+        fig, ax = plt.subplots(figsize=(15, 10), subplot_kw={'projection': ccrs.Robinson()})
 
+        # Añadir características al mapa
+        ax.add_feature(cfeature.LAND.with_scale('50m'), facecolor='#f0e4d3')
+        ax.add_feature(cfeature.OCEAN.with_scale('50m'), facecolor='#a2d2ff')
+        ax.add_feature(cfeature.COASTLINE.with_scale('50m'), linewidth=0.7)
+        ax.add_feature(cfeature.BORDERS.with_scale('50m'), linestyle='-', linewidth=0.5)
+        ax.add_feature(cfeature.LAKES.with_scale('50m'), facecolor='#a2d2ff')
+        ax.add_feature(cfeature.RIVERS.with_scale('50m'), edgecolor='#a2d2ff')
 
-    # Crear el gráfico (ejemplo: gráfico de dispersión)
-    fig = px.line(data, x='Año', y='Periodo', title='Gráfico de Temperatura')
+        # Visualizar los datos de temperatura
+        temperature_plot = ax.contourf(longitudes, latitudes, temperatures_2d, 60,
+                                        transform=ccrs.PlateCarree(), cmap='coolwarm', alpha=0.75)
 
-    # Convertir el gráfico a HTML
-    graph_html = fig.to_html(full_html=False)
+        # Añadir una barra de colores
+        plt.colorbar(temperature_plot, label='Temperatura (K)', orientation='horizontal', pad=0.05)
+
+        # Título del gráfico
+        plt.title('Distribución de la temperatura del aire', fontsize=15)
+
+        # Guardar la imagen en un objeto BytesIO
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        plt.close()  # Cierra la figura para liberar memoria
+
+        # Codificar la imagen a base64 para enviarla al HTML
+        image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        image_data = f"data:image/png;base64,{image_base64}"
+
+    except Exception as e:
+        return render(request, 'home/error.html', {'error': str(e)})
 
     # Renderizar el gráfico en la plantilla
-    return render(request, 'home/index.html', {'graph': graph_html})
-
-def csv_plot_view_evol_CO2(request):
-    # Construir la ruta al archivo CSV dentro de static
-    csv_file_path = os.path.join(settings.BASE_DIR, 'static', 'temperatura.csv')
-
-    
-    # Leer el archivo CSV   
-    data = pd.read_csv(csv_file_path, delimiter=";")
-
-
-    # Crear el gráfico (ejemplo: gráfico de dispersión)
-    fig = px.line(data, x='Año', y='Periodo', title='Gráfico de Temperatura')
-
-    # Convertir el gráfico a HTML
-    graph_html = fig.to_html(full_html=False)
-
-    # Renderizar el gráfico en la plantilla
-    return render(request, 'home/index.html', {'graph_evol_co2': graph_html})
+    return render(request, 'home/index.html', {'image_data': image_data})
