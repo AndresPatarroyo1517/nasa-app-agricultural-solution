@@ -64,3 +64,21 @@ def csv_plot_view(request):
 
     # Renderizar el gráfico en la plantilla
     return render(request, 'home/index.html', {'graph': graph_html})
+
+def csv_plot_view_evol_CO2(request):
+    # Construir la ruta al archivo CSV dentro de static
+    csv_file_path = os.path.join(settings.BASE_DIR, 'static', 'temperatura.csv')
+
+    
+    # Leer el archivo CSV   
+    data = pd.read_csv(csv_file_path, delimiter=";")
+
+
+    # Crear el gráfico (ejemplo: gráfico de dispersión)
+    fig = px.line(data, x='Año', y='Periodo', title='Gráfico de Temperatura')
+
+    # Convertir el gráfico a HTML
+    graph_html = fig.to_html(full_html=False)
+
+    # Renderizar el gráfico en la plantilla
+    return render(request, 'home/index.html', {'graph_evol_co2': graph_html})
