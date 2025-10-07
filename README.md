@@ -24,7 +24,7 @@ nasa-app-agricultural-solution/
 
 ## ⚡ Tecnologías Utilizadas
 
-- **Python 3.x**: Lógica del backend.
+- **Python 3.11**: Lógica del backend.
 - **Django**: Framework web.
 - **Matplotlib / Plotly / Seaborn**: Para generar gráficos de predicción.
 - **HTML, CSS y JavaScript**: Interfaz web.
